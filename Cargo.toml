@@ -18,7 +18,7 @@ num-derive = "0.3"
 zip = "0.6.4"
 
 [build-dependencies]
-bindgen = "0.64"
+bindgen = "0.70.0"
 cc = "1.0"
 
 [dev-dependencies]
@@ -27,3 +27,12 @@ clap = { version = "4.2.4", features = ["derive"] }
 fancy-regex = "0.11.0"
 rand = "0.8.5"
 serde_json = "1.0.96"
+
+[features]
+default = ["linux", "cpu"]
+
+linux = []
+macos = []
+cpu = []
+cuda = []
+tpu = []

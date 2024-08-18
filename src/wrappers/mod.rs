@@ -1,3 +1,5 @@
+#![allow(unsafe_op_in_unsafe_fn)]
+
 mod literal;
 mod pjrt_buffer;
 mod pjrt_client;

@@ -1,12 +1,13 @@
 extern crate bindgen;
 
 use std::env;
+use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum OS {
     Linux,
-    #[allow(clippy::enum_variant_names)]
     MacOS,
     Windows,
 }
@@ -20,6 +21,33 @@ impl OS {
             "windows" => Self::Windows,
             os => panic!("Unsupported system {os}"),
         }
+    }
+}
+
+fn get_download_url(os: OS) -> &'static str {
+    match os {
+        OS::Linux if cfg!(feature = "cpu") && cfg!(target_arch = "x86_64") => {
+            "https://github.com/elixir-nx/xla/releases/download/v0.8.0/xla_extension-0.8.0-x86_64-linux-gnu-cpu.tar.gz"
+        }
+        OS::Linux if cfg!(feature = "cuda") && cfg!(target_arch = "x86_64") => {
+            "https://github.com/elixir-nx/xla/releases/download/v0.8.0/xla_extension-0.8.0-x86_64-linux-gnu-cuda12.tar.gz"
+        }
+        OS::Linux if cfg!(feature = "tpu") && cfg!(target_arch = "x86_64") => {
+            "https://github.com/elixir-nx/xla/releases/download/v0.8.0/xla_extension-0.8.0-x86_64-linux-gnu-tpu.tar.gz"
+        }
+        OS::MacOS if cfg!(feature = "cpu") && cfg!(target_arch = "x86_64") => {
+            "https://github.com/elixir-nx/xla/releases/download/v0.8.0/xla_extension-0.8.0-x86_64-darwin-cpu.tar.gz"
+        }
+        OS::Linux if cfg!(feature = "cpu") && cfg!(target_arch = "aarch64") => {
+            "https://github.com/elixir-nx/xla/releases/download/v0.8.0/xla_extension-0.8.0-aarch64-linux-gnu-cpu.tar.gz"
+        }
+        OS::Linux if cfg!(feature = "cuda") && cfg!(target_arch = "aarch64") => {
+            "https://github.com/elixir-nx/xla/releases/download/v0.8.0/xla_extension-0.8.0-aarch64-linux-gnu-cuda12.tar.gz"
+        }
+        OS::MacOS if cfg!(feature = "cpu") && cfg!(target_arch = "aarch64") => {
+            "https://github.com/elixir-nx/xla/releases/download/v0.8.0/xla_extension-0.8.0-aarch64-darwin-cpu.tar.gz"
+        }
+        _ => panic!("Unsupported OS/architecture combination"),
     }
 }
 
@@ -40,15 +68,7 @@ fn make_shared_lib<P: AsRef<Path>>(os: OS, xla_dir: P) {
                 .file("xla_rs/xla_rs.cc")
                 .compile("xla_rs");
         }
-        OS::Windows => {
-            cc::Build::new()
-                .cpp(true)
-                .pic(true)
-                .warnings(false)
-                .include(xla_dir.as_ref().join("include"))
-                .file("xla_rs/xla_rs.cc")
-                .compile("xla_rs");
-        }
+        OS::Windows => panic!("does not supported windows"),
     };
 }
 
@@ -62,26 +82,64 @@ fn main() {
     let xla_dir = env_var_rerun("XLA_EXTENSION_DIR")
         .map_or_else(|| env::current_dir().unwrap().join("xla_extension"), PathBuf::from);
 
+    let download_path = env::current_dir().unwrap().join("xla_extension.tar.gz");
+
+    if !xla_dir.exists() || fs::read_dir(&xla_dir).unwrap().next().is_none() {
+        if !download_path.exists() {
+            let download_url = get_download_url(os);
+
+            Command::new("curl")
+                .arg("-L")
+                .arg("-o")
+                .arg(&download_path)
+                .arg(download_url)
+                .status()
+                .expect("Failed to download XLA extension");
+        }
+
+        Command::new("tar")
+            .arg("-xzvf")
+            .arg(&download_path)
+            .status()
+            .expect("Failed to extract XLA extension");
+
+        unsafe {
+            env::set_var("XLA_EXTENSION_DIR", &xla_dir);
+        }
+    }
+
+    let xla_dir = if env::var("XLA_EXTENSION_DIR").is_err() {
+        let current_dir = env::current_dir().unwrap();
+        let xla_dir = current_dir.join("xla_extension");
+        unsafe {
+            env::set_var("XLA_EXTENSION_DIR", &xla_dir);
+        }
+        xla_dir
+    } else {
+        PathBuf::from(env::var("XLA_EXTENSION_DIR").unwrap())
+    };
+
+    if !xla_dir.exists() {
+        panic!("XLA_EXTENSION_DIR points to a non-existent directory. The build cannot continue.");
+    }
+
     println!("cargo:rerun-if-changed=xla_rs/xla_rs.h");
     println!("cargo:rerun-if-changed=xla_rs/xla_rs.cc");
     let bindings = bindgen::Builder::default()
         .header("xla_rs/xla_rs.h")
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks))
+        .wrap_unsafe_ops(true)
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .generate()
         .expect("Unable to generate bindings");
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     bindings.write_to_file(out_path.join("c_xla.rs")).expect("Couldn't write bindings!");
 
-    // Exit early on docs.rs as the C++ library would not be available.
     if std::env::var("DOCS_RS").is_ok() {
         return;
     }
     make_shared_lib(os, &xla_dir);
-    // The --copy-dt-needed-entries -lstdc++ are helpful to get around some
-    // "DSO missing from command line" error
-    // undefined reference to symbol '_ZStlsIcSt11char_traitsIcESaIcEERSt13basic_ostreamIT_T0_ES7_RKNSt7__cxx1112basic_stringIS4_S5_T1_EE@@GLIBCXX_3.4.21'
+
     if os == OS::Linux {
-        // println!("cargo:rustc-link-arg=-Wl,--copy-dt-needed-entries");
         println!("cargo:rustc-link-arg=-Wl,-lstdc++");
     }
     println!("cargo:rustc-link-search=native={}", xla_dir.join("lib").display());
