@@ -142,12 +142,13 @@ fn main() {
     if os == OS::Linux {
         println!("cargo:rustc-link-arg=-Wl,-lstdc++");
     }
-    println!("cargo:rustc-link-search=native={}", xla_dir.join("lib").display());
     println!("cargo:rustc-link-lib=static=xla_rs");
+    let abs_xla_dir = xla_dir.canonicalize().unwrap();
+    println!("cargo:rustc-link-search=native={}", abs_xla_dir.join("lib").display());
     if os == OS::MacOS {
-        println!("cargo:rustc-link-arg=-Wl,-rpath,{}", xla_dir.join("lib").display());
+        println!("cargo:rustc-link-arg=-Wl,-rpath,{}", abs_xla_dir.join("lib").display());
     } else {
-        println!("cargo:rustc-link-arg=-Wl,-rpath={}", xla_dir.join("lib").display());
+        println!("cargo:rustc-link-arg=-Wl,-rpath={}", abs_xla_dir.join("lib").display());
     }
     println!("cargo:rustc-link-lib=xla_extension");
 }
