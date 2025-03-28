@@ -68,7 +68,7 @@ fn make_shared_lib<P: AsRef<Path>>(os: OS, xla_dir: P) {
                 .file("xla_rs/xla_rs.cc")
                 .compile("xla_rs");
         }
-        OS::Windows => panic!("does not supported windows"),
+        OS::Windows => panic!("does not support windows"),
     };
 }
 
@@ -79,12 +79,12 @@ fn env_var_rerun(name: &str) -> Option<String> {
 
 fn main() {
     let os = OS::get();
+    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     let xla_dir = env_var_rerun("XLA_EXTENSION_DIR")
-        .map_or_else(|| env::current_dir().unwrap().join("xla_extension"), PathBuf::from);
-
-    let download_path = env::current_dir().unwrap().join("xla_extension.tar.gz");
+        .map_or_else(|| out_path.join("xla_extension"), PathBuf::from);
 
     if !xla_dir.exists() || fs::read_dir(&xla_dir).unwrap().next().is_none() {
+        let download_path = out_path.join("xla_extension.tar.gz");
         if !download_path.exists() {
             let download_url = get_download_url(os);
 
@@ -97,30 +97,22 @@ fn main() {
                 .expect("Failed to download XLA extension");
         }
 
+        Command::new("mkdir")
+            .arg("-p")
+            .arg(&xla_dir)
+            .status()
+            .expect("Failed to create XLA extension directory");
+
         Command::new("tar")
             .arg("-xzvf")
             .arg(&download_path)
+            .arg("-C")
+            .arg(&xla_dir)
+            .arg("--strip-components=1")
             .status()
             .expect("Failed to extract XLA extension");
 
-        unsafe {
-            env::set_var("XLA_EXTENSION_DIR", &xla_dir);
-        }
-    }
-
-    let xla_dir = if env::var("XLA_EXTENSION_DIR").is_err() {
-        let current_dir = env::current_dir().unwrap();
-        let xla_dir = current_dir.join("xla_extension");
-        unsafe {
-            env::set_var("XLA_EXTENSION_DIR", &xla_dir);
-        }
-        xla_dir
-    } else {
-        PathBuf::from(env::var("XLA_EXTENSION_DIR").unwrap())
-    };
-
-    if !xla_dir.exists() {
-        panic!("XLA_EXTENSION_DIR points to a non-existent directory. The build cannot continue.");
+        env::set_var("XLA_EXTENSION_DIR", &xla_dir);
     }
 
     println!("cargo:rerun-if-changed=xla_rs/xla_rs.h");
@@ -131,7 +123,6 @@ fn main() {
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .generate()
         .expect("Unable to generate bindings");
-    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     bindings.write_to_file(out_path.join("c_xla.rs")).expect("Couldn't write bindings!");
 
     if std::env::var("DOCS_RS").is_ok() {
@@ -142,7 +133,6 @@ fn main() {
     if os == OS::Linux {
         println!("cargo:rustc-link-arg=-Wl,-lstdc++");
     }
-    // println!("cargo:rustc-link-lib=static=xla_rs");
     println!("cargo:rustc-link-lib=dylib=xla_rs");
     let abs_xla_dir = xla_dir.canonicalize().unwrap();
     println!("cargo:rustc-link-search=native={}", abs_xla_dir.join("lib").display());
