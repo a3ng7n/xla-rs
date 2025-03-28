@@ -142,4 +142,6 @@ fn main() {
         println!("cargo:rustc-link-arg=-Wl,-rpath={}", abs_xla_dir.join("lib").display());
     }
     println!("cargo:rustc-link-lib=xla_extension");
+
+    println!("cargo::metadata=XLA_DIR={}", xla_dir.display());
 }
