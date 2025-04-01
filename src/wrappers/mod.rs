@@ -154,13 +154,20 @@ pub trait NativeType: Copy {
     unsafe fn constant_r0(b: c_lib::xla_builder, v: Self) -> c_lib::xla_op;
     unsafe fn constant_r1(b: c_lib::xla_builder, v: *const Self, l: usize) -> c_lib::xla_op;
     unsafe fn constant_r1c(b: c_lib::xla_builder, v: Self, l: usize) -> c_lib::xla_op;
+    unsafe fn constant_r2(
+        b: c_lib::xla_builder,
+        v: *const Self,
+        rows: usize,
+        cols: usize,
+    ) -> c_lib::xla_op;
     unsafe fn create_r0(v: Self) -> c_lib::literal;
     unsafe fn create_r1(v: *const Self, l: usize) -> c_lib::literal;
+    unsafe fn create_r2(v: *const Self, rows: usize, cols: usize) -> c_lib::literal;
     unsafe fn literal_get_first_element(l: c_lib::literal) -> Self;
 }
 
 macro_rules! native_type {
-    ($ty:ty, $cst0:ident, $cst1:ident, $cst1c:ident, $cre0:ident, $cre1:ident, $gf:ident) => {
+    ($ty:ty, $cst0:ident, $cst1:ident, $cst1c:ident, $cst2:ident, $cre0:ident, $cre1:ident, $cre2:ident, $gf:ident) => {
         impl NativeType for $ty {
             unsafe fn constant_r0(b: c_lib::xla_builder, v: Self) -> c_lib::xla_op {
                 c_lib::$cst0(b, v)
@@ -175,11 +182,22 @@ macro_rules! native_type {
             unsafe fn constant_r1c(b: c_lib::xla_builder, v: Self, l: usize) -> c_lib::xla_op {
                 c_lib::$cst1c(b, v, l)
             }
+            unsafe fn constant_r2(
+                b: c_lib::xla_builder,
+                v: *const Self,
+                rows: usize,
+                cols: usize,
+            ) -> c_lib::xla_op {
+                c_lib::$cst2(b, v, rows, cols)
+            }
             unsafe fn create_r0(v: Self) -> c_lib::literal {
                 c_lib::$cre0(v)
             }
             unsafe fn create_r1(v: *const Self, l: usize) -> c_lib::literal {
                 c_lib::$cre1(v, l)
+            }
+            unsafe fn create_r2(v: *const Self, rows: usize, cols: usize) -> c_lib::literal {
+                c_lib::$cre2(v, rows, cols)
             }
             unsafe fn literal_get_first_element(l: c_lib::literal) -> Self {
                 c_lib::$gf(l)
@@ -193,8 +211,10 @@ native_type!(
     constant_r0_int32_t,
     constant_r1_int32_t,
     constant_r1c_int32_t,
+    constant_r2_int32_t,
     create_r0_int32_t,
     create_r1_int32_t,
+    create_r2_int32_t,
     literal_get_first_element_int32_t
 );
 
@@ -203,8 +223,10 @@ native_type!(
     constant_r0_int64_t,
     constant_r1_int64_t,
     constant_r1c_int64_t,
+    constant_r2_int64_t,
     create_r0_int64_t,
     create_r1_int64_t,
+    create_r2_int64_t,
     literal_get_first_element_int64_t
 );
 
@@ -213,8 +235,10 @@ native_type!(
     constant_r0_uint32_t,
     constant_r1_uint32_t,
     constant_r1c_uint32_t,
+    constant_r2_uint32_t,
     create_r0_uint32_t,
     create_r1_uint32_t,
+    create_r2_uint32_t,
     literal_get_first_element_uint32_t
 );
 
@@ -223,8 +247,10 @@ native_type!(
     constant_r0_uint64_t,
     constant_r1_uint64_t,
     constant_r1c_uint64_t,
+    constant_r2_uint64_t,
     create_r0_uint64_t,
     create_r1_uint64_t,
+    create_r2_uint64_t,
     literal_get_first_element_uint64_t
 );
 
@@ -233,8 +259,10 @@ native_type!(
     constant_r0_float,
     constant_r1_float,
     constant_r1c_float,
+    constant_r2_float,
     create_r0_float,
     create_r1_float,
+    create_r2_float,
     literal_get_first_element_float
 );
 
@@ -243,8 +271,10 @@ native_type!(
     constant_r0_double,
     constant_r1_double,
     constant_r1c_double,
+    constant_r2_double,
     create_r0_double,
     create_r1_double,
+    create_r2_double,
     literal_get_first_element_double
 );
 

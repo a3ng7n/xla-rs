@@ -251,8 +251,11 @@ char *status_error_message(status);
   xla_op constant_r1c_##native_type(const xla_builder, native_type, size_t);   \
   xla_op constant_r1_##native_type(const xla_builder, const native_type *,     \
                                    size_t);                                    \
+  xla_op constant_r2_##native_type(const xla_builder, const native_type *,     \
+                                   size_t, size_t);                            \
   literal create_r0_##native_type(native_type);                                \
   literal create_r1_##native_type(const native_type *, size_t);                \
+  literal create_r2_##native_type(const native_type *, size_t, size_t);        \
   native_type literal_get_first_element_##native_type(const literal);
 
 FOR_EACH_NATIVE_TYPE(CONST_OP_R01)

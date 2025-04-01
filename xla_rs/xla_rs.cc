@@ -196,12 +196,46 @@ xla_op constant_literal(const xla_builder b, const literal l) {
     return new XlaOp(                                                          \
         ConstantR1<native_type>(b, absl::Span<const native_type>(f, len)));    \
   }                                                                            \
+  xla_op constant_r2_##native_type(const xla_builder b, const native_type *f,  \
+                                   size_t rows, size_t cols) {                 \
+    /* Create a literal with the appropriate shape */                          \
+    Literal literal(ShapeUtil::MakeShape(                                      \
+        primitive_util::NativeToPrimitiveType<native_type>(),                  \
+        {static_cast<int64_t>(rows), static_cast<int64_t>(cols)}));            \
+    /* Copy data from the flat array into the literal */                       \
+    absl::Span<const native_type> flat_data(f, rows * cols);                   \
+    for (size_t i = 0; i < rows; ++i) {                                        \
+      for (size_t j = 0; j < cols; ++j) {                                      \
+        literal.Set<native_type>(                                              \
+            {static_cast<int64_t>(i), static_cast<int64_t>(j)},                \
+            flat_data[i * cols + j]);                                          \
+      }                                                                        \
+    }                                                                          \
+    return new XlaOp(ConstantLiteral(b, literal));                             \
+  }                                                                            \
   literal create_r0_##native_type(native_type f) {                             \
     return new Literal(LiteralUtil::CreateR0<native_type>(f));                 \
   }                                                                            \
   literal create_r1_##native_type(const native_type *f, size_t nel) {          \
     return new Literal(LiteralUtil::CreateR1<native_type>(                     \
         absl::Span<const native_type>(f, nel)));                               \
+  }                                                                            \
+  literal create_r2_##native_type(const native_type *f, size_t rows,           \
+                                  size_t cols) {                               \
+    /* Create empty literal with right shape */                                \
+    Literal literal(ShapeUtil::MakeShape(                                      \
+        primitive_util::NativeToPrimitiveType<native_type>(),                  \
+        {static_cast<int64_t>(rows), static_cast<int64_t>(cols)}));            \
+    /* Fill with data from flat array */                                       \
+    absl::Span<const native_type> flat_data(f, rows * cols);                   \
+    for (size_t i = 0; i < rows; ++i) {                                        \
+      for (size_t j = 0; j < cols; ++j) {                                      \
+        literal.Set<native_type>(                                              \
+            {static_cast<int64_t>(i), static_cast<int64_t>(j)},                \
+            flat_data[i * cols + j]);                                          \
+      }                                                                        \
+    }                                                                          \
+    return new Literal(std::move(literal));                                    \
   }                                                                            \
   native_type literal_get_first_element_##native_type(const literal l) {       \
     return l->GetFirstElement<native_type>();                                  \

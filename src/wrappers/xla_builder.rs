@@ -130,6 +130,17 @@ impl XlaBuilder {
         self.constant_r1(f)
     }
 
+    /// A one dimension constant node based on some slice stored on the host.
+    pub fn constant_r2<T: NativeType>(&self, f: &[T], rows: usize, cols: usize) -> Result<XlaOp> {
+        let op = unsafe { T::constant_r2(self.ptr(), f.as_ptr(), rows, cols) };
+        self.wrap(op)
+    }
+
+    /// Shorthand function for `constant_r1`.
+    pub fn c2<T: NativeType>(&self, f: &[T], rows: usize, cols: usize) -> Result<XlaOp> {
+        self.constant_r2(f, rows, cols)
+    }
+
     /// A scalar node with the zero value for the associated type.
     pub fn zero(&self, ty: super::ElementType) -> Result<XlaOp> {
         let op = unsafe { c_lib::op_zero(self.ptr(), ty.primitive_type() as i32) };
