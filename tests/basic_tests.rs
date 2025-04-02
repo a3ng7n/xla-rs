@@ -4,26 +4,40 @@ use xla::{ArrayElement, Result};
 fn add_op() -> Result<()> {
     let client = xla::PjRtClient::cpu()?;
 
+    let mat = [[1.0f32, 2.0f32, 3.0f32], [4.0f32, 5.0f32, 6.0f32], [7.0f32, 8.0f32, 9.0f32]];
+    let ones = [1.0f32, 1.0f32, 1.0f32];
+
+    // test matrix adding and multiplying
     let builder = xla::XlaBuilder::new("test");
     let cst42 = builder.constant_r0(42f32)?;
-    let vert_vec = builder.constant_r1(&[1.0f32, 1.0f32, 1.0f32])?;
-    let vert_vec = vert_vec.transpose(&[0])?;
-    let mat = ndarray::array![[
-        [3.0f32, 3.0f32, 3.0f32],
-        [2.0f32, 2.0f32, 2.0f32],
-        [1.0f32, 1.0f32, 1.0f32]
-    ]];
-    let matslc = mat.as_slice().unwrap();
+    let vec = builder.constant_r1(&ones)?;
+    let matslc = mat.as_flattened();
     let cstmat = builder.constant_r2(matslc, 3, 3)?;
     let sum = (&cst42 + &cstmat)?;
-    let sum = sum.matmul(&vert_vec)?;
+    let sum = sum.matmul(&vec)?;
     let computation = sum.build()?;
     let result_mat = client.compile(&computation)?;
     let result_mat = result_mat.execute::<xla::Literal>(&[])?;
     let result_mat = result_mat[0][0].to_literal_sync()?;
     assert_eq!(result_mat.element_count(), 3);
     assert_eq!(result_mat.array_shape()?, xla::ArrayShape::new::<f32>(vec![3]));
-    assert_eq!(result_mat.to_vec::<f32>()?, [135., 132., 129.]);
+    assert_eq!(result_mat.to_vec::<f32>()?, [132., 141., 150.]);
+
+    // same test but with matrix transposed
+    let builder = xla::XlaBuilder::new("test");
+    let cst42 = builder.constant_r0(42f32)?;
+    let vec = builder.constant_r1(&ones)?;
+    let cstmat = builder.constant_r2(matslc, 3, 3)?;
+    let cstmat = cstmat.transpose(&[1, 0])?;
+    let sum = (&cst42 + &cstmat)?;
+    let sum = sum.matmul(&vec)?;
+    let computation = sum.build()?;
+    let result_mat = client.compile(&computation)?;
+    let result_mat = result_mat.execute::<xla::Literal>(&[])?;
+    let result_mat = result_mat[0][0].to_literal_sync()?;
+    assert_eq!(result_mat.element_count(), 3);
+    assert_eq!(result_mat.array_shape()?, xla::ArrayShape::new::<f32>(vec![3]));
+    assert_eq!(result_mat.to_vec::<f32>()?, [138., 141., 144.]);
 
     let builder = xla::XlaBuilder::new("test");
     let cst42 = builder.constant_r0(42f32)?;
