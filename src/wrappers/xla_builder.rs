@@ -131,14 +131,23 @@ impl XlaBuilder {
     }
 
     /// A one dimension constant node based on some slice stored on the host.
-    pub fn constant_r2<T: NativeType>(&self, f: &[T], rows: usize, cols: usize) -> Result<XlaOp> {
+    pub fn constant_r2<T: NativeType>(&self, f: &[&[T]]) -> Result<XlaOp> {
+        let rows = f.len();
+        let row_lens = f.iter().map(|row| row.len()).collect::<Vec<usize>>();
+        let cols = match row_lens.as_slice() {
+            [head, tail @ ..] => tail.iter().all(|x| x == head).then_some(*head),
+            [] => Some(0),
+        }
+        .expect("all rows must have the same number of columns!");
+        let f = Vec::from(f).into_iter().flatten().cloned().collect::<Vec<T>>();
+        let f = f.as_slice();
         let op = unsafe { T::constant_r2(self.ptr(), f.as_ptr(), rows, cols) };
         self.wrap(op)
     }
 
     /// Shorthand function for `constant_r1`.
-    pub fn c2<T: NativeType>(&self, f: &[T], rows: usize, cols: usize) -> Result<XlaOp> {
-        self.constant_r2(f, rows, cols)
+    pub fn c2<T: NativeType>(&self, f: &[&[T]]) -> Result<XlaOp> {
+        self.constant_r2(f)
     }
 
     /// A scalar node with the zero value for the associated type.

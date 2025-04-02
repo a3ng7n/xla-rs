@@ -4,15 +4,18 @@ use xla::{ArrayElement, Result};
 fn add_op() -> Result<()> {
     let client = xla::PjRtClient::cpu()?;
 
-    let mat = [[1.0f32, 2.0f32, 3.0f32], [4.0f32, 5.0f32, 6.0f32], [7.0f32, 8.0f32, 9.0f32]];
+    let mat = [
+        [1.0f32, 2.0f32, 3.0f32].as_slice(),
+        [4.0f32, 5.0f32, 6.0f32].as_slice(),
+        [7.0f32, 8.0f32, 9.0f32].as_slice(),
+    ];
     let ones = [1.0f32, 1.0f32, 1.0f32];
 
     // test matrix adding and multiplying
     let builder = xla::XlaBuilder::new("test");
     let cst42 = builder.constant_r0(42f32)?;
     let vec = builder.constant_r1(&ones)?;
-    let matslc = mat.as_flattened();
-    let cstmat = builder.constant_r2(matslc, 3, 3)?;
+    let cstmat = builder.constant_r2(&mat)?;
     let sum = (&cst42 + &cstmat)?;
     let sum = sum.matmul(&vec)?;
     let computation = sum.build()?;
@@ -27,7 +30,7 @@ fn add_op() -> Result<()> {
     let builder = xla::XlaBuilder::new("test");
     let cst42 = builder.constant_r0(42f32)?;
     let vec = builder.constant_r1(&ones)?;
-    let cstmat = builder.constant_r2(matslc, 3, 3)?;
+    let cstmat = builder.constant_r2(&mat)?;
     let cstmat = cstmat.transpose(&[1, 0])?;
     let sum = (&cst42 + &cstmat)?;
     let sum = sum.matmul(&vec)?;
@@ -51,6 +54,43 @@ fn add_op() -> Result<()> {
     assert_eq!(result.array_shape()?, xla::ArrayShape::new::<f32>(vec![2]));
     assert_eq!(result.get_first_element::<f32>()?, 85.);
     assert_eq!(result.to_vec::<f32>()?, [85., 85.]);
+    Ok(())
+}
+
+#[test]
+fn malformed_mat() -> Result<()> {
+    let bad_mat = [
+        [1.0f32, 2.0f32, 3.0f32].as_slice(),
+        [4.0f32, 5.0f32, 6.0f32].as_slice(),
+        [7.0f32, 8.0f32].as_slice(),
+    ];
+
+    let result = std::panic::catch_unwind(|| {
+        let builder = xla::XlaBuilder::new("test");
+        builder.constant_r2(&bad_mat)
+    });
+    assert!(result.is_err_and(|e| {
+        let msg = match e.downcast_ref::<&'static str>() {
+            Some(s) => *s,
+            None => match e.downcast_ref::<String>() {
+                Some(s) => &s[..],
+                None => "Box<dyn Any>",
+            },
+        };
+        msg == "all rows must have the same number of columns!"
+    }));
+
+    let good_mat = [
+        [1.0f32, 2.0f32, 3.0f32].as_slice(),
+        [4.0f32, 5.0f32, 6.0f32].as_slice(),
+        [7.0f32, 8.0f32, 9.0f32].as_slice(),
+    ];
+    let result = std::panic::catch_unwind(|| {
+        let builder = xla::XlaBuilder::new("test");
+        builder.constant_r2(&good_mat)
+    });
+    assert!(result.is_ok());
+
     Ok(())
 }
 
