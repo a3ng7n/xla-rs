@@ -462,6 +462,27 @@ impl XlaOp {
         self.wrap(op)
     }
 
+    pub fn triangular_solve(
+        &self,
+        b: &XlaOp,
+        left_side: bool,
+        lower: bool,
+        unit_diagonal: bool,
+        transpose_a: isize,
+    ) -> Result<Self> {
+        let op = unsafe {
+            c_lib::op_triangular_solve(
+                self.op,
+                b.op,
+                left_side,
+                lower,
+                unit_diagonal,
+                transpose_a.try_into().unwrap(),
+            )
+        };
+        self.wrap(op)
+    }
+
     pub fn gather(
         &self,
         start_indices: &XlaOp,

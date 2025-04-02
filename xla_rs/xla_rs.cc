@@ -847,6 +847,16 @@ xla_op op_conditional(const xla_op pred, const xla_op true_op,
   END_PROTECT_OP(pred)
 }
 
+xla_op op_triangular_solve(const xla_op a, const xla_op b, const bool left_side,
+                           const bool lower, const bool unit_diagonal,
+                           const int transpose_a) {
+  BEGIN_PROTECT_OP
+  return new XlaOp(
+      TriangularSolve(*a, *b, left_side, lower, unit_diagonal,
+                      (triangularsolveoptions_transpose)transpose_a));
+  END_PROTECT_OP(a)
+}
+
 xla_builder op_builder(const xla_op arg) { return arg->builder(); }
 
 int xla_op_valid(const xla_op op) { return op->valid(); }

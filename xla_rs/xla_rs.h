@@ -20,6 +20,7 @@
 #include "xla/service/hlo_parser.h"
 #include "xla/shape_util.h"
 #include "xla/statusor.h"
+#include "xla/xla_data.pb.h"
 #pragma GCC diagnostic pop
 using namespace xla;
 
@@ -35,6 +36,7 @@ typedef Shape *shape;
 typedef Literal *literal;
 typedef XlaComputation *xla_computation;
 typedef HloModuleProto *hlo_module_proto;
+typedef TriangularSolveOptions::Transpose triangularsolveoptions_transpose;
 #else
 typedef struct _pjrt_client *pjrt_client;
 typedef struct _pjrt_loaded_executable *pjrt_loaded_executable;
@@ -47,6 +49,8 @@ typedef struct _shape *shape;
 typedef struct _literal *literal;
 typedef struct _xla_computation *xla_computation;
 typedef struct _hlo_module_proto *hlo_module_proto;
+typedef struct _triangularsolveoptions_transpose
+    triangularsolveoptions_transpose;
 #endif
 
 status pjrt_cpu_client_create(pjrt_client *);
@@ -178,6 +182,8 @@ xla_op op_iota(const xla_builder, int, size_t, const int64_t *, int64_t);
 xla_op op_while(const xla_computation, const xla_computation, const xla_op);
 xla_op op_conditional(const xla_op, const xla_op, const xla_computation,
                       const xla_op, const xla_computation);
+xla_op op_triangular_solve(const xla_op, const xla_op, const bool, const bool,
+                           const bool, const int);
 xla_builder op_builder(const xla_op);
 
 int xla_op_valid(const xla_op);

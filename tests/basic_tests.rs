@@ -95,6 +95,31 @@ fn malformed_mat() -> Result<()> {
 }
 
 #[test]
+fn triangular_solve() -> Result<()> {
+    let client = xla::PjRtClient::cpu()?;
+    let builder = xla::XlaBuilder::new("test");
+    let a_ = [
+        [1.0f32, 2.0f32, 3.0f32].as_slice(),
+        [4.0f32, 5.0f32, 6.0f32].as_slice(),
+        [7.0f32, 8.0f32, 9.0f32].as_slice(),
+    ];
+    let a = builder.constant_r2(&a_)?;
+
+    // let b_ = [[2.0f32].as_slice(), [3.0f32].as_slice(), [4.0f32].as_slice()];
+    let b = builder.constant_r2(&a_)?;
+
+    let t_solve = a.triangular_solve(&b, false, true, false, 1)?;
+    let computation = t_solve.build()?;
+    let result = client.compile(&computation)?;
+    let result = result.execute::<xla::Literal>(&[])?;
+    let result = result[0][0].to_literal_sync()?;
+    assert_eq!(result.element_count(), 9);
+    assert_eq!(result.array_shape()?, xla::ArrayShape::new::<f32>(vec![3, 3]));
+
+    Ok(())
+}
+
+#[test]
 fn sum_op() -> Result<()> {
     let client = xla::PjRtClient::cpu()?;
     let builder = xla::XlaBuilder::new("test");
