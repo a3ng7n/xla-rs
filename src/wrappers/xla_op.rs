@@ -5,7 +5,11 @@
 //!
 //! For details on the semantics, see
 //! [operation_semantics](https://www.tensorflow.org/xla/operation_semantics).
-use super::{ArrayShape, PrimitiveType, Shape, XlaBuilder, XlaComputation};
+use std::collections::HashMap;
+
+use super::{
+    ArrayShape, HloModuleProto, Literal, PrimitiveType, Shape, XlaBuilder, XlaComputation,
+};
 use crate::{c_lib, Error, Result};
 
 pub struct XlaOp {
@@ -138,6 +142,54 @@ impl XlaOp {
         let config = std::ffi::CString::new(config).unwrap();
         let op = unsafe { c_lib::op_einsum2(self.op, rhs.op, config.as_ptr()) };
         self.wrap(op)
+    }
+
+    /// Compute gradient for given op
+    pub fn grad(&self, func: fn(&XlaOp) -> Result<XlaOp>, input: &XlaOp) -> Result<()> {
+        let builder = input.builder().clone();
+
+        let output = func(input)?;
+        // let output_shape = builder.get_shape(&output)?;
+        let output_shape = output.array_shape()?;
+        let output_dims_usize = &output.dims()?;
+        // let output_dims_i64 = output_dims_usize
+        //     .iter()
+        //     .map(|x| i64::try_from(*x).unwrap())
+        //     .collect::<Vec<i64>>()
+        //     .as_slice();
+        // let input_dims = input
+        //     .dims()?
+        //     .iter()
+        //     .map(|x| i64::try_from(*x).unwrap())
+        //     .collect::<Vec<i64>>()
+        //     .as_slice();
+        //
+        // let cotangent = builder.constant_literal(&Literal::create_from_shape(
+        //     output_shape.primitive_type(),
+        //     output_dims_usize,
+        // ))?;
+        //
+        // let backward_builder = XlaBuilder::new("grad_");
+        // let p_input =
+        //     backward_builder.parameter(0, output_shape.element_type(), input_dims, "p_input")?;
+        // let ct_output = backward_builder.parameter(
+        //     1,
+        //     output_shape.element_type(),
+        //     output_dims_i64,
+        //     "ct_output",
+        // )?;
+        //
+        // let mut primal_map: HashMap<&XlaOp, &XlaOp> = HashMap::new();
+        // let mut cotangent_map: HashMap<&XlaOp, &XlaOp> = HashMap::new();
+        //
+        // let forward_computation = builder.build(&output)?;
+        // let hlo_module = forward_computation.proto()?;
+        // let blah2 = blah.proto();
+        // let adlkfj = unsafe { blah2.mutable_hlo().mutable_hlo_module() };
+
+        // primal_map[&input] = &p_input;
+        // cotangent_map[&output] = &ct_output;
+        Ok(())
     }
 
     /// Reshape this node to a different set of dimension sizes, the number of element between the

@@ -370,6 +370,7 @@ impl Drop for XlaComputation {
     }
 }
 
+#[derive(Debug)]
 pub struct HloModuleProto(c_lib::hlo_module_proto);
 
 impl HloModuleProto {
@@ -417,6 +418,33 @@ impl HloModuleProto {
         handle_status(status)?;
         Ok(Self(ptr))
     }
+
+    pub fn get_computations_size(&self) -> Result<usize> {
+        let mut comps_size = 0i32;
+        let status = unsafe { c_lib::hlo_computation_protos_size(self.ptr(), &mut comps_size) };
+        handle_status(status)?;
+        Ok(usize::try_from(comps_size).unwrap())
+    }
+
+    pub fn computations(&self) -> Result<Vec<HloComputationProto>> {
+        let num_comps = self.get_computations_size()?;
+        let placeholder: c_lib::hlo_computation_proto = std::ptr::null_mut();
+        let mut comps = vec![placeholder; num_comps];
+        let status = unsafe { c_lib::hlo_computation_protos(self.ptr(), comps.as_mut_ptr()) };
+
+        let mut comps_out: Vec<HloComputationProto> = vec![];
+        for comp in comps {
+            let comp_proto = HloComputationProto(comp);
+            comps_out.push(comp_proto);
+        }
+
+        handle_status(status)?;
+        Ok(comps_out)
+    }
+
+    fn ptr(&self) -> c_lib::hlo_module_proto {
+        self.0
+    }
 }
 
 impl Drop for HloModuleProto {
@@ -424,3 +452,88 @@ impl Drop for HloModuleProto {
         unsafe { c_lib::hlo_module_proto_free(self.0) }
     }
 }
+
+#[derive(Debug)]
+pub struct HloComputationProto(c_lib::hlo_computation_proto);
+
+impl HloComputationProto {
+    pub fn get_instructions_size(&self) -> Result<usize> {
+        let mut instrs_size = 0i32;
+        let status = unsafe { c_lib::hlo_instruction_protos_size(self.ptr(), &mut instrs_size) };
+        handle_status(status)?;
+        Ok(usize::try_from(instrs_size).unwrap())
+    }
+
+    pub fn instructions(&self) -> Result<Vec<HloInstructionProto>> {
+        let num_instrs = self.get_instructions_size()?;
+        let placeholder: c_lib::hlo_instruction_proto = std::ptr::null_mut();
+        let mut instrs = vec![placeholder; num_instrs];
+        let status = unsafe { c_lib::hlo_instruction_protos(self.ptr(), instrs.as_mut_ptr()) };
+
+        let mut instrs_out: Vec<HloInstructionProto> = vec![];
+        for instr in instrs {
+            instrs_out.push(HloInstructionProto(instr));
+        }
+
+        handle_status(status)?;
+        Ok(instrs_out)
+    }
+
+    fn ptr(&self) -> c_lib::hlo_computation_proto {
+        self.0
+    }
+}
+
+impl Drop for HloComputationProto {
+    fn drop(&mut self) {
+        unsafe { c_lib::hlo_computation_proto_free(self.0) }
+    }
+}
+
+#[derive(Debug)]
+pub struct HloInstructionProto(c_lib::hlo_instruction_proto);
+
+impl HloInstructionProto {
+    pub fn opcode(&self) -> Result<String> {
+        Ok(unsafe {
+            let ptr = c_lib::hlo_instruction_proto_opcode(self.0);
+            c_ptr_to_string(ptr)
+        })
+    }
+}
+impl Drop for HloInstructionProto {
+    fn drop(&mut self) {
+        unsafe { c_lib::hlo_instruction_proto_free(self.0) }
+    }
+}
+
+// pub struct HloModule(c_lib::hlo_module);
+//
+// impl Drop for HloModule {
+//     fn drop(&mut self) {
+//         unsafe { c_lib::hlo_module_free(self.0) }
+//     }
+// }
+//
+// impl HloModule {
+//     pub fn from_proto(proto: &HloModuleProto) -> Self {
+//         let ptr = unsafe { c_lib::hlo_module_from_proto(proto.0) };
+//         Self(ptr)
+//     }
+// }
+//
+// pub struct HloComputation(c_lib::hlo_computation);
+//
+// impl Drop for HloComputation {
+//     fn drop(&mut self) {
+//         unsafe { c_lib::hlo_computation_free(self.0) }
+//     }
+// }
+//
+// pub struct HloInstruction(c_lib::hlo_instruction);
+//
+// impl Drop for HloInstruction {
+//     fn drop(&mut self) {
+//         unsafe { c_lib::hlo_instruction_free(self.0) }
+//     }
+// }

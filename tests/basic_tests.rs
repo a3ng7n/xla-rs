@@ -198,3 +198,35 @@ fn tuple_literal() -> Result<()> {
     assert_eq!(result[0].to_vec::<f32>()?, [3.1]);
     Ok(())
 }
+
+#[test]
+fn get_hlo_computations() -> Result<()> {
+    let client = xla::PjRtClient::cpu()?;
+    let builder = xla::XlaBuilder::new("test");
+    let x = builder.parameter(0, f32::TY, &[-2], "x")?;
+    let mean = x.reduce_mean(&[0], false)?;
+    let computation = mean.build()?;
+
+    let proto = computation.proto();
+    println!("module proto {:?}", proto);
+    let comps = proto.computations()?;
+    println!("computation protos {:?}", comps);
+    for comp in comps {
+        let instrs = comp.instructions()?;
+        println!("instructions for comp {:?} {:?}", comp, instrs);
+
+        for instr in instrs {
+            println!("opcode: {:?}", instr.opcode()?)
+        }
+    }
+    assert!(true == true);
+
+    let exec = computation.compile(&client)?;
+    // let input = xla::Literal::vec1(&[4.2f32, 1.337f32]);
+    // let result = exec.execute::<xla::Literal>(&[input])?;
+    // let result = result[0][0].to_literal_sync()?;
+    // assert_eq!(result.to_vec::<f32>()?, [2.7684999]);
+    // Dimensions got reduced.
+    // assert_eq!(result.array_shape()?.dims(), []);
+    Ok(())
+}

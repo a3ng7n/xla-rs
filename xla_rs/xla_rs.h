@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #ifdef __cplusplus
+#include <vector>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -37,6 +38,12 @@ typedef Literal *literal;
 typedef XlaComputation *xla_computation;
 typedef HloModuleProto *hlo_module_proto;
 typedef TriangularSolveOptions::Transpose triangularsolveoptions_transpose;
+typedef HloModule *hlo_module;
+typedef HloComputation *hlo_computation;
+typedef HloInstruction *hlo_instruction;
+typedef HloModuleProto *hlo_module_proto;
+typedef HloComputationProto *hlo_computation_proto;
+typedef HloInstructionProto *hlo_instruction_proto;
 #else
 typedef struct _pjrt_client *pjrt_client;
 typedef struct _pjrt_loaded_executable *pjrt_loaded_executable;
@@ -51,6 +58,12 @@ typedef struct _xla_computation *xla_computation;
 typedef struct _hlo_module_proto *hlo_module_proto;
 typedef struct _triangularsolveoptions_transpose
     triangularsolveoptions_transpose;
+typedef struct _hlo_module *hlo_module;
+typedef struct _hlo_computation *hlo_computation;
+typedef struct _hlo_instruction *hlo_instruction;
+typedef struct _hlo_module_proto *hlo_module_proto;
+typedef struct _hlo_computation_proto *hlo_computation_proto;
+typedef struct _hlo_instruction_proto *hlo_instruction_proto;
 #endif
 
 status pjrt_cpu_client_create(pjrt_client *);
@@ -236,6 +249,20 @@ status hlo_module_proto_parse_proto(const char *, size_t, bool,
                                     hlo_module_proto *);
 xla_computation xla_computation_from_hlo_module_proto(const hlo_module_proto);
 void hlo_module_proto_free(hlo_module_proto);
+
+status hlo_computation_protos_size(const hlo_module_proto, int *);
+status hlo_computation_protos(const hlo_module_proto, hlo_computation_proto *);
+void hlo_computation_proto_free(hlo_computation_proto);
+
+status hlo_instruction_protos_size(const hlo_computation_proto, int *);
+status hlo_instruction_protos(const hlo_computation_proto,
+                              hlo_instruction_proto *);
+void hlo_instruction_proto_free(hlo_instruction_proto);
+
+char *hlo_instruction_proto_opcode(hlo_instruction_proto);
+// void hlo_module_free(hlo_module);
+// void hlo_computation_free(hlo_computation);
+// void hlo_instruction_free(hlo_instruction);
 
 char *xla_computation_name(xla_computation);
 hlo_module_proto xla_computation_proto(const xla_computation);

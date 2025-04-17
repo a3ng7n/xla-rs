@@ -1,4 +1,5 @@
 #include "xla_rs.h"
+#include <cstdio>
 
 #define ASSIGN_OR_RETURN_STATUS(lhs, rexpr)                                    \
   ASSIGN_OR_RETURN_STATUS_IMPL(                                                \
@@ -1121,6 +1122,49 @@ xla_computation
 xla_computation_from_hlo_module_proto(const hlo_module_proto p) {
   return new XlaComputation(*p);
 }
+
+status hlo_computation_protos_size(const hlo_module_proto p, int *out_size) {
+  *out_size = p->computations_size();
+  return nullptr;
+}
+
+status hlo_computation_protos(const hlo_module_proto p,
+                              hlo_computation_proto *out_comps) {
+  auto comps_size = p->computations_size();
+  for (int i = 0; i < comps_size; ++i) {
+    out_comps[i] = new HloComputationProto();
+    out_comps[i]->CopyFrom(p->computations(i));
+  }
+  return nullptr;
+}
+
+void hlo_computation_proto_free(hlo_computation_proto c) { delete c; }
+
+status hlo_instruction_protos_size(const hlo_computation_proto p,
+                                   int *out_size) {
+  *out_size = p->instructions_size();
+  return nullptr;
+}
+
+status hlo_instruction_protos(const hlo_computation_proto p,
+                              hlo_instruction_proto *out_instructions) {
+  auto instrs_size = p->instructions_size();
+  for (int i = 0; i < instrs_size; ++i) {
+    out_instructions[i] = new HloInstructionProto();
+    out_instructions[i]->CopyFrom(p->instructions(i));
+  }
+  return nullptr;
+}
+
+void hlo_instruction_proto_free(hlo_instruction_proto i) { delete i; }
+
+char *hlo_instruction_proto_opcode(hlo_instruction_proto i) {
+  return strdup(std::string(i->opcode()).c_str());
+}
+
+// void hlo_module_free(hlo_module m) { delete m; }
+// void hlo_computation_free(hlo_computation c) { delete c; }
+// void hlo_instruction_free(hlo_instruction i) { delete i; }
 
 void hlo_module_proto_free(hlo_module_proto p) { delete p; }
 
