@@ -144,51 +144,46 @@ impl XlaOp {
         self.wrap(op)
     }
 
+    pub fn is_identical_to(&self, rhs: &XlaOp) -> bool {
+        let identicality = unsafe { c_lib::xla_op_is_identical_to(self.op, rhs.op) };
+        identicality
+    }
+
     /// Compute gradient for given op
     pub fn grad(&self, func: fn(&XlaOp) -> Result<XlaOp>, input: &XlaOp) -> Result<()> {
         let builder = input.builder().clone();
 
         let output = func(input)?;
-        // let output_shape = builder.get_shape(&output)?;
         let output_shape = output.array_shape()?;
         let output_dims_usize = &output.dims()?;
-        // let output_dims_i64 = output_dims_usize
-        //     .iter()
-        //     .map(|x| i64::try_from(*x).unwrap())
-        //     .collect::<Vec<i64>>()
-        //     .as_slice();
-        // let input_dims = input
-        //     .dims()?
-        //     .iter()
-        //     .map(|x| i64::try_from(*x).unwrap())
-        //     .collect::<Vec<i64>>()
-        //     .as_slice();
-        //
-        // let cotangent = builder.constant_literal(&Literal::create_from_shape(
-        //     output_shape.primitive_type(),
-        //     output_dims_usize,
-        // ))?;
-        //
-        // let backward_builder = XlaBuilder::new("grad_");
-        // let p_input =
-        //     backward_builder.parameter(0, output_shape.element_type(), input_dims, "p_input")?;
-        // let ct_output = backward_builder.parameter(
-        //     1,
-        //     output_shape.element_type(),
-        //     output_dims_i64,
-        //     "ct_output",
-        // )?;
-        //
-        // let mut primal_map: HashMap<&XlaOp, &XlaOp> = HashMap::new();
-        // let mut cotangent_map: HashMap<&XlaOp, &XlaOp> = HashMap::new();
-        //
-        // let forward_computation = builder.build(&output)?;
-        // let hlo_module = forward_computation.proto()?;
-        // let blah2 = blah.proto();
-        // let adlkfj = unsafe { blah2.mutable_hlo().mutable_hlo_module() };
+        let output_dims_i64 =
+            output_dims_usize.iter().map(|x| i64::try_from(*x).unwrap()).collect::<Vec<i64>>();
+        let output_dims_i64 = output_dims_i64.as_slice();
+        let input_dims =
+            input.dims()?.iter().map(|x| i64::try_from(*x).unwrap()).collect::<Vec<i64>>();
+        let input_dims = input_dims.as_slice();
 
-        // primal_map[&input] = &p_input;
-        // cotangent_map[&output] = &ct_output;
+        let cotangent = builder.constant_literal(&Literal::create_from_shape(
+            output_shape.primitive_type(),
+            output_dims_usize,
+        ))?;
+
+        let backward_builder = XlaBuilder::new("grad_");
+        let p_input =
+            backward_builder.parameter(0, output_shape.element_type(), input_dims, "p_input")?;
+        let ct_output = backward_builder.parameter(
+            1,
+            output_shape.element_type(),
+            output_dims_i64,
+            "ct_output",
+        )?;
+
+        let mut primal_map: HashMap<&XlaOp, &XlaOp> = HashMap::new();
+        let mut cotangent_map: HashMap<&XlaOp, &XlaOp> = HashMap::new();
+
+        let forward_computation = builder.build(&output)?;
+        let hlo_module = forward_computation.proto();
+
         Ok(())
     }
 

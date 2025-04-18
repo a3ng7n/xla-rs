@@ -861,6 +861,9 @@ xla_op op_triangular_solve(const xla_op a, const xla_op b, const bool left_side,
 xla_builder op_builder(const xla_op arg) { return arg->builder(); }
 
 int xla_op_valid(const xla_op op) { return op->valid(); }
+bool xla_op_is_identical_to(const xla_op op, const xla_op rhs) {
+  return op->IsIdenticalTo(*rhs);
+}
 
 void xla_op_free(xla_op o) { delete o; }
 

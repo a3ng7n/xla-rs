@@ -199,6 +199,7 @@ xla_op op_triangular_solve(const xla_op, const xla_op, const bool, const bool,
                            const bool, const int);
 xla_builder op_builder(const xla_op);
 
+bool xla_op_is_identical_to(const xla_op, const xla_op);
 int xla_op_valid(const xla_op);
 void xla_op_free(xla_op);
 
